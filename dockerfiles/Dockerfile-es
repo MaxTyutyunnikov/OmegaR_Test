@@ -1,0 +1,57 @@
+FROM alpine:latest
+MAINTAINER Max Tyutyunnikov <max-tyutyunnikov@yandex.ru>
+
+ARG ELASTICSEARCH_VERS=6.2.4
+ARG NODE_NAME=node_name
+ARG UNICAST_HOSTS=node_name
+
+ENV ELASTICSEARCH_VERS $ELASTICSEARCH_VERS
+ENV NODE_NAME $NODE_NAME
+ENV UNICAST_HOSTS $UNICAST_HOSTS
+
+RUN apk update && apk upgrade && apk add bash curl openjdk8 openssl sudo docker-py openssh openrc && rm -rf /var/cache/apk/*
+
+RUN cd /tmp && wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-$ELASTICSEARCH_VERS.tar.gz
+
+RUN mkdir /opt && cd /opt && tar -xvzf /tmp/elasticsearch-$ELASTICSEARCH_VERS.tar.gz && mv elasticsearch-$ELASTICSEARCH_VERS elasticsearch
+
+RUN mkdir -p /data
+
+RUN rc-update add sshd
+
+RUN mkdir -p /home/elasticsearch && \
+    echo "elasticsearch:x:1000:1000:Elasticsearch,,,:/home/elasticsearch:/bin/sh" >> /etc/passwd && \
+    echo "elasticsearch:x:1000:" >> /etc/group && \
+    echo "elasticsearch ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/elasticsearch && \
+    chmod 0440 /etc/sudoers.d/elasticsearch && \
+    chown root:root /usr/bin/sudo && chmod 4755 /usr/bin/sudo
+
+RUN mkdir -p /home/elasticsearch/.ssh && chmod 700 /home/elasticsearch/.ssh
+
+COPY ssh/sshd_config /etc/ssh/sshd_config
+COPY ssh/id_rsa.pub  /home/elasticsearch/.ssh/authorized_keys
+COPY ssh/id_rsa.pub  /home/elasticsearch/.ssh/authorized_keys2
+COPY ssh/id_rsa.pub  /home/elasticsearch/.ssh/id_rsa.pub
+COPY ssh/id_rsa      /home/elasticsearch/.ssh/id_rsa
+RUN chmod 640 /home/elasticsearch/.ssh/*
+
+RUN chown elasticsearch:elasticsearch -R /home/elasticsearch
+
+COPY es-config /opt/elasticsearch/config
+RUN  chown elasticsearch:elasticsearch -R /opt/elasticsearch
+
+COPY scripts/run.sh /run.sh
+RUN  chmod 777 /run.sh
+
+USER elasticsearch
+ENV HOME /home/elasticsearch
+WORKDIR /home/elasticsearch
+
+RUN mkdir /tmp/elasticsearch.tmp
+ENV ES_TMPDIR /tmp/elasticsearch.tmp
+
+EXPOSE 9200 9300 22
+
+VOLUME ["/data"]
+
+CMD ["/run.sh"]

@@ -1,0 +1,36 @@
+---
+- name: ES Cluster
+  hosts: "{{ arg_hosts | default('localhost') }}"
+  gather_facts: no
+  tasks:
+    - name: Create volumes_path
+      file:
+        path: "{{ volumes_path }}"
+        state: directory
+        mode: 0777
+    - name: Create datas
+      file:
+        path: "{{ volumes_path }}/{{ hostvars[item].data }}"
+        state: directory
+        mode: 0777
+      with_items: "{{ groups['es_cluster'] }}"
+    - name: Create a network
+      docker_network:
+        name: es
+    - name: Add host entry
+      docker_container:
+        name: "{{ item }}"
+        image: "maxt/alpine-elastic:0.1"
+        privileged: yes
+        env:
+          NODE_NAME: "{{ item }}"
+          UNICAST_HOSTS: "{{ groups['es_cluster'] | join(',')  }}"
+        ports:
+          - "0.0.0.0:{{ hostvars[item].port_ssh }}:22"
+          - "127.0.0.1:{{ hostvars[item].port_rest }}:9200"
+          - "127.0.0.1:{{ hostvars[item].port }}:9300"
+        volumes:
+          - "{{ volumes_path }}/{{ hostvars[item].data }}:/data"
+        networks:
+          - name: es
+      with_items: "{{ groups['es_cluster'] }}"

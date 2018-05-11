@@ -1,0 +1,22 @@
+FROM alpine:latest
+MAINTAINER Max Tyutyunnikov <max-tyutyunnikov@yandex.ru>
+
+RUN apk update && \
+    apk upgrade && apk add bash curl docker ansible openssl sudo py-yaml py-jinja2 py-paramiko py-crypto docker-py py-backports.ssl_match_hostname openssh-client && \
+    rm -rf /var/cache/apk/*
+
+RUN mkdir -p /home/ansible && \
+    echo "ansible:x:1000:1000:ansible,,,:/home/ansible:/bin/sh" >> /etc/passwd && \
+    echo "ansible:x:1000:" >> /etc/group && \
+    echo "ansible ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/ansible && \
+    chmod 0440 /etc/sudoers.d/ansible && \
+    chown ansible:ansible -R /home/ansible && \
+    chown root:root /usr/bin/sudo && chmod 4755 /usr/bin/sudo
+
+USER ansible
+ENV HOME /home/ansible
+WORKDIR /home/ansible
+
+VOLUME ["/home/ansible"]
+
+CMD ["/bin/bash"]
