@@ -1,7 +1,30 @@
 ---
 - name: ES Cluster
   hosts: "{{ arg_hosts | default('localhost') }}"
-  gather_facts: no
+  gather_facts: yes
+  pre_tasks:
+    - name: 'update'
+      raw: apt-get -y update
+    - name: 'Install prerequisites'
+      apt: name={{item}} update_cache=yes
+      with_items:
+       - apt-transport-https
+       - ca-certificates
+       - curl
+       - software-properties-common
+       - python-simplejson
+       - python-pip
+       - python-docker
+       - curl
+       - openssl
+       - sudo
+    - name:    Add Docker GPG key
+      apt_key: url=https://download.docker.com/linux/ubuntu/gpg
+    - name:    Add Docker APT repository
+      apt_repository:
+        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ansible_distribution_release}} stable
+    - name:    Install Docker
+      apt: name=docker-ce
   tasks:
     - name: Create volumes_path
       file:
@@ -33,4 +56,5 @@
           - "{{ volumes_path }}/{{ hostvars[item].data }}:/data"
         networks:
           - name: es
+        restart_policy: "unless-stopped"
       with_items: "{{ groups['es_cluster'] }}"

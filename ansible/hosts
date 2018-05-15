@@ -4,4 +4,4 @@ es-node-2 ansible_host=172.17.0.2 port_rest=9201 port=9301 port_ssh=2021 data="e
 es-node-3 ansible_host=172.17.0.3 port_rest=9202 port=9302 port_ssh=2022 data="es-data-3"
 
 [doc]
-167.99.215.176  ansible_user=root
+178.62.224.63  ansible_user=root

@@ -7,6 +7,7 @@ ELASTICSEARCH_VERS=6.2.4
 ES_URL=localhost:9200
 NODE_NAME?=$(uuidgen)
 VOLUMES_PATH?=${mkfile_dir}
+DOCEAN=178.62.224.63
 
 .PHONY: help build run clean
 
@@ -118,7 +119,7 @@ ans-run: ans-build
 	-v `pwd`/ansible:/etc/ansible \
 	-v `pwd`/ansible-home:/home/ansible \
 	-v `pwd`/es-data-cluster:/data-cluster \
-	maxt/alpine-ansible:0.1 sudo ansible-playbook es-cluster.yml --extra-vars "volumes_path=${VOLUMES_PATH}/es-data-cluster"
+	maxt/alpine-ansible:0.1 ansible-playbook -i ansible/hosts es-cluster.yml --extra-vars "volumes_path=${VOLUMES_PATH}/es-data-cluster"
 
 local-asn-run: build
 	@echo ============= Local Ansible Run
@@ -155,23 +156,23 @@ ssh_3: ssh
 rssh_1: ssh
 	@chmod 600 `pwd`/ssh/id_rsa &> /dev/null
 	@chmod 600 `pwd`/ssh/id_rsa.pub &> /dev/null
-#	@ssh-keygen -q -f "/home/${USER}/.ssh/known_hosts" -R 167.99.215.176
-	@ssh -i `pwd`/ssh/id_rsa -o Compression=no -o StrictHostKeyChecking=no -p 2020 elasticsearch@167.99.215.176
+#	@ssh-keygen -q -f "/home/${USER}/.ssh/known_hosts" -R ${DOCEAN}
+	@ssh -i `pwd`/ssh/id_rsa -o Compression=no -o StrictHostKeyChecking=no -p 2020 elasticsearch@${DOCEAN}
 
 rssh_2: ssh
 	@chmod 600 `pwd`/ssh/id_rsa &> /dev/null
 	@chmod 600 `pwd`/ssh/id_rsa.pub &> /dev/null
-#	@ssh-keygen -q -f "/home/${USER}/.ssh/known_hosts" -R 167.99.215.176
-	@ssh -i `pwd`/ssh/id_rsa -o Compression=no -o StrictHostKeyChecking=no -p 2021 elasticsearch@167.99.215.176
+#	@ssh-keygen -q -f "/home/${USER}/.ssh/known_hosts" -R ${DOCEAN}
+	@ssh -i `pwd`/ssh/id_rsa -o Compression=no -o StrictHostKeyChecking=no -p 2021 elasticsearch@${DOCEAN}
 
 rssh_3: ssh
 	@chmod 600 `pwd`/ssh/id_rsa &> /dev/null
 	@chmod 600 `pwd`/ssh/id_rsa.pub &> /dev/null
-#	@ssh-keygen -q -f "/home/${USER}/.ssh/known_hosts" -R 167.99.215.176
-	@ssh -i `pwd`/ssh/id_rsa -o Compression=no -o StrictHostKeyChecking=no -p 2022 elasticsearch@167.99.215.176
+#	@ssh-keygen -q -f "/home/${USER}/.ssh/known_hosts" -R ${DOCEAN}
+	@ssh -i `pwd`/ssh/id_rsa -o Compression=no -o StrictHostKeyChecking=no -p 2022 elasticsearch@${DOCEAN}
 
-export:
-	docker save maxt/alpine-elastic | bzip2 | ssh root@167.99.215.176 "bunzip2 | docker load"
+export-to-do:
+	docker save maxt/alpine-elastic | pv | bzip2 | ssh root@${DOCEAN} "bunzip2 | docker load"
 
 clean:
 	[ "`docker ps -a -q -f status=exited`" != "" ] && docker rm `docker ps -a -q -f status=exited` || exit 0
