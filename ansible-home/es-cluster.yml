@@ -1,4 +1,10 @@
 ---
+- hosts: doc
+  gather_facts: False
+  tasks:
+  - name: install python 2
+    raw: test -e /usr/bin/python || (apt -y update && apt install -y python-minimal)
+    when: "'doc' in arg_hosts"
 - name: ES Cluster
   hosts: "{{ arg_hosts | default('localhost') }}"
   gather_facts: yes
@@ -18,14 +24,25 @@
        - curl
        - openssl
        - sudo
+       - mc
+       - htop
     - name:    Add Docker GPG key
       apt_key: url=https://download.docker.com/linux/ubuntu/gpg
     - name:    Add Docker APT repository
       apt_repository:
         repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ansible_distribution_release}} stable
     - name:    Install Docker
-      apt: name=docker-ce
+      apt:
+        package: docker-ce=17.12.1~ce-0~ubuntu
+    - name: pull an image
+      docker_image:
+        name: "maxtt/alpine-elastic"
+        tag: "0.1"
   tasks:
+    - name: set vm.max_map_count to 262144 in sysctl
+      sysctl: name={{ item.key }} value={{ item.value }}
+      with_items:
+        - { key: "vm.max_map_count", value: "262144" }
     - name: Create volumes_path
       file:
         path: "{{ volumes_path }}"
@@ -37,24 +54,32 @@
         state: directory
         mode: 0777
       with_items: "{{ groups['es_cluster'] }}"
+    - name: remove containers
+      docker_container:
+        name: "{{ item }}"
+        state: absent
+      with_items: "{{ groups['es_cluster'] }}"
     - name: Create a network
       docker_network:
         name: es
     - name: Add host entry
       docker_container:
         name: "{{ item }}"
-        image: "maxt/alpine-elastic:0.1"
-        privileged: yes
+        image: "maxtt/alpine-elastic:0.1"
         env:
           NODE_NAME: "{{ item }}"
           UNICAST_HOSTS: "{{ groups['es_cluster'] | join(',')  }}"
         ports:
-          - "0.0.0.0:{{ hostvars[item].port_ssh }}:22"
+          - "{{ ansible_default_ipv4.address }}:{{ hostvars[item].port_ssh }}:22"
           - "127.0.0.1:{{ hostvars[item].port_rest }}:9200"
           - "127.0.0.1:{{ hostvars[item].port }}:9300"
         volumes:
           - "{{ volumes_path }}/{{ hostvars[item].data }}:/data"
         networks:
           - name: es
-        restart_policy: "unless-stopped"
+#        memory: "256M"
+#        kernel_memory: "256M"
+        recreate: yes
+        privileged: yes
+#        restart_policy: "unless-stopped"
       with_items: "{{ groups['es_cluster'] }}"

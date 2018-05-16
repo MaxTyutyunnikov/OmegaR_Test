@@ -7,7 +7,7 @@ ELASTICSEARCH_VERS=6.2.4
 ES_URL=localhost:9200
 NODE_NAME?=$(uuidgen)
 VOLUMES_PATH?=${mkfile_dir}
-DOCEAN=178.62.224.63
+DOCEAN=204.48.16.176
 
 .PHONY: help build run clean
 
@@ -51,7 +51,7 @@ build: dockerfiles/Dockerfile-es ssh
 	--build-arg ELASTICSEARCH_VERS=${ELASTICSEARCH_VERS} \
 	--build-arg NODE_NAME=${NODE_NAME} \
 	--build-arg UNICAST_HOSTS=${NODE_NAME} \
-	-t maxt/alpine-elastic:0.1 \
+	-t maxtt/alpine-elastic:0.1 \
 	-f $< \
 	.
 
@@ -68,7 +68,7 @@ run: build
 	-p 127.0.0.1:9200:9200 \
 	-p 127.0.0.1:9300:9300 \
 	-v `pwd`/es-data:/data \
-	maxt/alpine-elastic:0.1
+	maxtt/alpine-elastic:0.1
 
 info:
 	curl -X GET ${ES_URL}/?pretty
@@ -84,9 +84,9 @@ cluster-run: build
 	@echo ============= Run Cluster
 	docker network create es
 
-	docker run --detach --privileged -e NODE_NAME=es-node-1 -e UNICAST_HOSTS="es-node-1,es-node-2,es-node-3" --name es-node-1 --network es -p 127.0.0.1:9200:9200 -p 127.0.0.1:9300:9300 -v `pwd`/es-data-cluster/es-data-1:/data maxt/alpine-elastic:0.1
-	docker run --detach --privileged -e NODE_NAME=es-node-2 -e UNICAST_HOSTS="es-node-1,es-node-2,es-node-3" --name es-node-2 --network es -p 127.0.0.1:9201:9200 -p 127.0.0.1:9301:9300 -v `pwd`/es-data-cluster/es-data-2:/data maxt/alpine-elastic:0.1
-	docker run --detach --privileged -e NODE_NAME=es-node-3 -e UNICAST_HOSTS="es-node-1,es-node-2,es-node-3" --name es-node-3 --network es -p 127.0.0.1:9202:9200 -p 127.0.0.1:9302:9300 -v `pwd`/es-data-cluster/es-data-3:/data maxt/alpine-elastic:0.1
+	docker run --detach --privileged -e NODE_NAME=es-node-1 -e UNICAST_HOSTS="es-node-1,es-node-2,es-node-3" --name es-node-1 --network es -p 127.0.0.1:9200:9200 -p 127.0.0.1:9300:9300 -v `pwd`/es-data-cluster/es-data-1:/data maxtt/alpine-elastic:0.1
+	docker run --detach --privileged -e NODE_NAME=es-node-2 -e UNICAST_HOSTS="es-node-1,es-node-2,es-node-3" --name es-node-2 --network es -p 127.0.0.1:9201:9200 -p 127.0.0.1:9301:9300 -v `pwd`/es-data-cluster/es-data-2:/data maxtt/alpine-elastic:0.1
+	docker run --detach --privileged -e NODE_NAME=es-node-3 -e UNICAST_HOSTS="es-node-1,es-node-2,es-node-3" --name es-node-3 --network es -p 127.0.0.1:9202:9200 -p 127.0.0.1:9302:9300 -v `pwd`/es-data-cluster/es-data-3:/data maxtt/alpine-elastic:0.1
 
 cluster-kill:
 	@echo ============= Kill Cluster
@@ -106,7 +106,7 @@ cluster-info:
 ans-build: dockerfiles/Dockerfile-ans build
 	@echo ============= Ansible Build
 	@docker build \
-	-t maxt/alpine-ansible:0.1 \
+	-t maxtt/alpine-ansible:0.1 \
 	-f $< \
 	.
 
@@ -119,11 +119,11 @@ ans-run: ans-build
 	-v `pwd`/ansible:/etc/ansible \
 	-v `pwd`/ansible-home:/home/ansible \
 	-v `pwd`/es-data-cluster:/data-cluster \
-	maxt/alpine-ansible:0.1 ansible-playbook -i ansible/hosts es-cluster.yml --extra-vars "volumes_path=${VOLUMES_PATH}/es-data-cluster"
+	maxtt/alpine-ansible:0.1 ansible-playbook -i ansible/hosts es-cluster.yml --extra-vars "volumes_path=${VOLUMES_PATH}/es-data-cluster"
 
 local-asn-run: build
 	@echo ============= Local Ansible Run
-	ansible-playbook -i ansible/hosts ansible-home/es-cluster.yml --extra-vars "volumes_path=${VOLUMES_PATH}/es-data-cluster"
+	ansible-playbook -i ansible/hosts ansible-home/es-cluster.yml --extra-vars "volumes_path=${VOLUMES_PATH}/es-data-cluster  arg_hosts=localhost"
 
 do-asn-run: build
 	@echo ============= DigitalOcean Ansible Run
@@ -172,7 +172,10 @@ rssh_3: ssh
 	@ssh -i `pwd`/ssh/id_rsa -o Compression=no -o StrictHostKeyChecking=no -p 2022 elasticsearch@${DOCEAN}
 
 export-to-do:
-	docker save maxt/alpine-elastic | pv | bzip2 | ssh root@${DOCEAN} "bunzip2 | docker load"
+	docker save maxtt/alpine-elastic | pv | bzip2 | ssh root@${DOCEAN} "bunzip2 | docker load"
+
+push: build
+	docker push maxtt/alpine-elastic
 
 clean:
 	[ "`docker ps -a -q -f status=exited`" != "" ] && docker rm `docker ps -a -q -f status=exited` || exit 0
