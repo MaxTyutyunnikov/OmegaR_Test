@@ -1,6 +1,7 @@
 UseDNS                 no
-PasswordAuthentication no
+PasswordAuthentication yes
 PubkeyAuthentication   yes
 AuthorizedKeysFile     .ssh/authorized_keys
 Subsystem sftp         /usr/lib/ssh/sftp-server
-PermitRootLogin        prohibit-password
+#PermitRootLogin        prohibit-password
+PermitRootLogin        yes

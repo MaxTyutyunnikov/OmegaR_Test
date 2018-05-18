@@ -4,10 +4,12 @@ MAINTAINER Max Tyutyunnikov <max-tyutyunnikov@yandex.ru>
 ARG ELASTICSEARCH_VERS=6.2.4
 ARG NODE_NAME=node_name
 ARG UNICAST_HOSTS=node_name
+ARG ES_PASS=espass
 
 ENV ELASTICSEARCH_VERS $ELASTICSEARCH_VERS
 ENV NODE_NAME $NODE_NAME
 ENV UNICAST_HOSTS $UNICAST_HOSTS
+ENV ES_PASS $ES_PASS
 
 RUN apk update && apk upgrade && apk add bash curl openjdk8 openssl sudo docker-py openssh openrc && rm -rf /var/cache/apk/*
 
@@ -32,7 +34,6 @@ COPY ssh/sshd_config /etc/ssh/sshd_config
 COPY ssh/id_rsa.pub  /home/elasticsearch/.ssh/authorized_keys
 COPY ssh/id_rsa.pub  /home/elasticsearch/.ssh/authorized_keys2
 COPY ssh/id_rsa.pub  /home/elasticsearch/.ssh/id_rsa.pub
-COPY ssh/id_rsa      /home/elasticsearch/.ssh/id_rsa
 RUN chmod 640 /home/elasticsearch/.ssh/*
 
 RUN chown elasticsearch:elasticsearch -R /home/elasticsearch

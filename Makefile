@@ -8,6 +8,7 @@ ES_URL=localhost:9200
 NODE_NAME?=$(uuidgen)
 VOLUMES_PATH?=${mkfile_dir}
 DOCEAN=204.48.16.176
+ES_PASS=`cat ssh/root_pass`
 
 .PHONY: help build run clean
 
@@ -33,6 +34,9 @@ help:
 	@echo make rssh_1        - зайти по ssh на es-node-1 на DigitalOcean
 	@echo make rssh_2        - зайти по ssh на es-node-2 на DigitalOcean
 	@echo make rssh_3        - зайти по ssh на es-node-3 на DigitalOcean
+	@echo do-cluster-info    - информация о кластере на DigitalOcean
+	@echo ssh_setpass        - установить пароли контейнеров elasticsearch на DigitalOcean
+	@echo ssh_print          - шпаргалка для доступа по ssh с паролем
 
 ./ssh/id_rsa:
 	@echo ssh key generate
@@ -103,6 +107,9 @@ cluster-kill:
 cluster-info:
 	curl -XGET 'http://localhost:9200/_cluster/stats?human&pretty'
 
+do-cluster-info:
+	curl -XGET 'http://${DOCEAN}:9200/_cluster/stats?human&pretty'
+
 ans-build: dockerfiles/Dockerfile-ans build
 	@echo ============= Ansible Build
 	@docker build \
@@ -127,7 +134,11 @@ local-asn-run: build
 
 do-asn-run: build
 	@echo ============= DigitalOcean Ansible Run
-	ansible-playbook -i ansible/hosts ansible-home/es-cluster.yml --extra-vars "volumes_path=/root/data arg_hosts=doc"
+	@ansible-playbook -i ansible/hosts ansible-home/es-cluster.yml --extra-vars "volumes_path=/root/data arg_hosts=doc"
+	@echo "*********************************************"
+	@echo "***"
+	@echo "*** run 'make ssh_setpass'"
+	@echo "***"
 
 ssh_0: ssh
 	@chmod 600 `pwd`/ssh/id_rsa &> /dev/null
@@ -156,26 +167,42 @@ ssh_3: ssh
 rssh_1: ssh
 	@chmod 600 `pwd`/ssh/id_rsa &> /dev/null
 	@chmod 600 `pwd`/ssh/id_rsa.pub &> /dev/null
-#	@ssh-keygen -q -f "/home/${USER}/.ssh/known_hosts" -R ${DOCEAN}
+	@ssh-keygen -q -f "/home/${USER}/.ssh/known_hosts" -R [${DOCEAN}]:2020
 	@ssh -i `pwd`/ssh/id_rsa -o Compression=no -o StrictHostKeyChecking=no -p 2020 elasticsearch@${DOCEAN}
 
 rssh_2: ssh
 	@chmod 600 `pwd`/ssh/id_rsa &> /dev/null
 	@chmod 600 `pwd`/ssh/id_rsa.pub &> /dev/null
-#	@ssh-keygen -q -f "/home/${USER}/.ssh/known_hosts" -R ${DOCEAN}
+	@ssh-keygen -q -f "/home/${USER}/.ssh/known_hosts" -R [${DOCEAN}]:2021
 	@ssh -i `pwd`/ssh/id_rsa -o Compression=no -o StrictHostKeyChecking=no -p 2021 elasticsearch@${DOCEAN}
 
 rssh_3: ssh
 	@chmod 600 `pwd`/ssh/id_rsa &> /dev/null
 	@chmod 600 `pwd`/ssh/id_rsa.pub &> /dev/null
-#	@ssh-keygen -q -f "/home/${USER}/.ssh/known_hosts" -R ${DOCEAN}
+	@ssh-keygen -q -f "/home/${USER}/.ssh/known_hosts" -R [${DOCEAN}]:2022
 	@ssh -i `pwd`/ssh/id_rsa -o Compression=no -o StrictHostKeyChecking=no -p 2022 elasticsearch@${DOCEAN}
+
+ssh_setpass:
+	@echo ${ES_PASS}
+	@ssh-keygen -q -f "/home/${USER}/.ssh/known_hosts" -R [${DOCEAN}]:2020
+	@ssh-keygen -q -f "/home/${USER}/.ssh/known_hosts" -R [${DOCEAN}]:2021
+	@ssh-keygen -q -f "/home/${USER}/.ssh/known_hosts" -R [${DOCEAN}]:2022
+	@ssh -o StrictHostKeyChecking=no -i `pwd`/ssh/id_rsa -p 2020 elasticsearch@${DOCEAN} "echo -e \"${ES_PASS}\\\\n${ES_PASS}\" | sudo passwd elasticsearch" || exit 0
+	@ssh -o StrictHostKeyChecking=no -i `pwd`/ssh/id_rsa -p 2021 elasticsearch@${DOCEAN} "echo -e \"${ES_PASS}\\\\n${ES_PASS}\" | sudo passwd elasticsearch" || exit 0
+	@ssh -o StrictHostKeyChecking=no -i `pwd`/ssh/id_rsa -p 2022 elasticsearch@${DOCEAN} "echo -e \"${ES_PASS}\\\\n${ES_PASS}\" | sudo passwd elasticsearch" || exit 0
+
+ssh_print:
+	@echo пароль: ${ES_PASS}
+	@echo ssh -o StrictHostKeyChecking=no -p 2020 elasticsearch@${DOCEAN}
+	@echo ssh -o StrictHostKeyChecking=no -p 2021 elasticsearch@${DOCEAN}
+	@echo ssh -o StrictHostKeyChecking=no -p 2022 elasticsearch@${DOCEAN}
 
 export-to-do:
 	docker save maxtt/alpine-elastic | pv | bzip2 | ssh root@${DOCEAN} "bunzip2 | docker load"
 
 push: build
 	docker push maxtt/alpine-elastic
+	ssh root@204.48.16.176 "docker pull maxtt/alpine-elastic:0.1"
 
 clean:
 	[ "`docker ps -a -q -f status=exited`" != "" ] && docker rm `docker ps -a -q -f status=exited` || exit 0

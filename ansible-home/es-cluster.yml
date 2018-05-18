@@ -5,6 +5,9 @@
   - name: install python 2
     raw: test -e /usr/bin/python || (apt -y update && apt install -y python-minimal)
     when: "'doc' in arg_hosts"
+  - name: Change root password
+    user: name=root update_password=always password=$6$rounds=100000$keR0QlsgEBnXXdN.$lUPgi54Apr6pWp27OaSsf.GpHzXERLVVG5FGYDvMGVZ7QWqADdlrQNHvf2yYmwA7WPpVDxRFP4U1wYct6TaDN1
+    when: "'doc' in arg_hosts"
 - name: ES Cluster
   hosts: "{{ arg_hosts | default('localhost') }}"
   gather_facts: yes
@@ -34,11 +37,11 @@
     - name:    Install Docker
       apt:
         package: docker-ce=17.12.1~ce-0~ubuntu
+  tasks:
     - name: pull an image
       docker_image:
-        name: "maxtt/alpine-elastic"
-        tag: "0.1"
-  tasks:
+        name: maxtt/alpine-elastic
+        tag: 0.1
     - name: set vm.max_map_count to 262144 in sysctl
       sysctl: name={{ item.key }} value={{ item.value }}
       with_items:
@@ -71,15 +74,17 @@
           UNICAST_HOSTS: "{{ groups['es_cluster'] | join(',')  }}"
         ports:
           - "{{ ansible_default_ipv4.address }}:{{ hostvars[item].port_ssh }}:22"
+          - "{{ ansible_default_ipv4.address }}:{{ hostvars[item].port_rest }}:9200"
+          - "{{ ansible_default_ipv4.address }}:{{ hostvars[item].port }}:9300"
           - "127.0.0.1:{{ hostvars[item].port_rest }}:9200"
           - "127.0.0.1:{{ hostvars[item].port }}:9300"
         volumes:
           - "{{ volumes_path }}/{{ hostvars[item].data }}:/data"
         networks:
           - name: es
-#        memory: "256M"
-#        kernel_memory: "256M"
+        memory: "600M"
+        kernel_memory: "600M"
         recreate: yes
         privileged: yes
-#        restart_policy: "unless-stopped"
+        restart_policy: "unless-stopped"
       with_items: "{{ groups['es_cluster'] }}"
