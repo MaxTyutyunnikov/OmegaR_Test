@@ -202,7 +202,7 @@ export-to-do:
 
 push: build
 	docker push maxtt/alpine-elastic
-	ssh root@204.48.16.176 "docker pull maxtt/alpine-elastic:0.1"
+	ssh root@${DOCEAN} "docker pull maxtt/alpine-elastic:0.1"
 
 clean:
 	[ "`docker ps -a -q -f status=exited`" != "" ] && docker rm `docker ps -a -q -f status=exited` || exit 0
