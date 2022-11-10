@@ -24,8 +24,8 @@ help:
 	@echo make clean         - Очистить imag'ы
 	@echo make ans-build     - Cобрать один image ansible
 	@echo make ans-run       - Запустить ansible-playbook внутри контейнера
-	@echo make do-asn-run    - Запустить ansible-playbook на DigitalOcean
-	@echo make local-asn-run - Запустить ansible-playbook локально
+	@echo make do-ans-run    - Запустить ansible-playbook на DigitalOcean
+	@echo make local-ans-run - Запустить ansible-playbook локально
 	@echo make export        - экспорт image elasticsearch на DigitalOcean
 	@echo make ssh_0         - зайти по ssh на nd
 	@echo make ssh_1         - зайти по ssh на es-node-1
@@ -47,7 +47,7 @@ ssh: ./ssh/id_rsa
 	@chmod 600 `pwd`/ssh/id_rsa.pub
 
 apt:
-	sudp apt install jq
+	sudo apt install jq
 
 build: dockerfiles/Dockerfile-es ssh
 	@echo ============= Build
@@ -128,11 +128,11 @@ ans-run: ans-build
 	-v `pwd`/es-data-cluster:/data-cluster \
 	maxtt/alpine-ansible:0.1 ansible-playbook -i ansible/hosts es-cluster.yml --extra-vars "volumes_path=${VOLUMES_PATH}/es-data-cluster"
 
-local-asn-run: build
+local-ans-run: build
 	@echo ============= Local Ansible Run
 	ansible-playbook -i ansible/hosts ansible-home/es-cluster.yml --extra-vars "volumes_path=${VOLUMES_PATH}/es-data-cluster  arg_hosts=localhost"
 
-do-asn-run: build
+do-ans-run: build
 	@echo ============= DigitalOcean Ansible Run
 	@ansible-playbook -i ansible/hosts ansible-home/es-cluster.yml --extra-vars "volumes_path=/root/data arg_hosts=doc"
 	@echo "*********************************************"
